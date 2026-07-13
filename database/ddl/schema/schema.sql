@@ -105,7 +105,7 @@ CREATE TABLE dbo.TB_SY_USUARIO (
     tp_perfil      CHAR(1)           NOT NULL,
     CONSTRAINT PK_TB_SY_USUARIO PRIMARY KEY CLUSTERED (id_usuario),
     CONSTRAINT UQ_TB_SY_USUARIO_DS_EMAIL UNIQUE (ds_email),
-    CONSTRAINT CK_TB_SY_USUARIO_DS_EMAIL CHECK (ds_email LIKE '%_@_%._%')
+    CONSTRAINT CK_TB_SY_USUARIO_DS_EMAIL CHECK (ds_email LIKE '%_@_%._%') -- validar se o email está estruturado de forma correta
 );
 GO
 
@@ -118,7 +118,7 @@ CREATE TABLE dbo.TB_SY_PESSOA_FISICA (
     CONSTRAINT UQ_TB_SY_PESSOA_FISICA_NR_CPF UNIQUE (nr_cpf),
     CONSTRAINT FK_TB_SY_PESSOA_FISICA_USUARIO FOREIGN KEY (id_usuario)
         REFERENCES dbo.TB_SY_USUARIO (id_usuario),
-    CONSTRAINT CK_TB_SY_PESSOA_FISICA_NR_CPF_NUMERICO CHECK (nr_cpf NOT LIKE '%[^0-9]%'),
+    CONSTRAINT CK_TB_SY_PESSOA_FISICA_NR_CPF_NUMERICO CHECK (nr_cpf NOT LIKE '%[^0-9]%'), -- evitar que letras sejam inseridas(segurança complementar)
     CONSTRAINT CK_TB_SY_PESSOA_FISICA_EMAIL_GUARDIAO CHECK (ds_email_guardiao IS NULL OR ds_email_guardiao LIKE '%_@_%._%')
 );
 GO
@@ -151,9 +151,9 @@ CREATE TABLE dbo.TB_SY_ASSINATURA (
     CONSTRAINT FK_TB_SY_ASSINATURA_USUARIO FOREIGN KEY (id_usuario)
         REFERENCES dbo.TB_SY_USUARIO (id_usuario),
     CONSTRAINT CK_TB_SY_ASSINATURA_NR_VALOR CHECK (nr_valor >= 0),
-    CONSTRAINT CK_TB_SY_ASSINATURA_ST_STATUS CHECK (st_status IN ('A','I','C')),
-    CONSTRAINT CK_TB_SY_ASSINATURA_TP_PERIODO CHECK (tp_periodo IN ('M','A')),
-    CONSTRAINT CK_TB_SY_ASSINATURA_SG_TIPO_PAGAMENTO CHECK (sg_tipo_pagamento IN ('C','D','P','B'))
+    CONSTRAINT CK_TB_SY_ASSINATURA_ST_STATUS CHECK (st_status IN ('A','I','C')), --Ativa, Inativa e Cancelada   
+    CONSTRAINT CK_TB_SY_ASSINATURA_TP_PERIODO CHECK (tp_periodo IN ('M','A')), --Mensal e anual
+    CONSTRAINT CK_TB_SY_ASSINATURA_SG_TIPO_PAGAMENTO CHECK (sg_tipo_pagamento IN ('C','D','P','B')) --Cartão, Debito, Pix e Boleto
 );
 GO
 
@@ -332,7 +332,7 @@ CREATE TABLE dbo.TB_SY_SITUACAO (
     CONSTRAINT PK_TB_SY_SITUACAO PRIMARY KEY CLUSTERED (id_situacao),
     CONSTRAINT FK_TB_SY_SITUACAO_USUARIO FOREIGN KEY (id_usuario)
         REFERENCES dbo.TB_SY_USUARIO (id_usuario),
-    CONSTRAINT CK_TB_SY_SITUACAO_NV_GRAVIDADE CHECK (nv_gravidade IN ('B','M','A'))
+    CONSTRAINT CK_TB_SY_SITUACAO_NV_GRAVIDADE CHECK (nv_gravidade IN ('B','M','A')) --Baixa, Média e Alta
 );
 GO
 
@@ -345,8 +345,8 @@ CREATE TABLE dbo.TB_SY_LINK (
     CONSTRAINT PK_TB_SY_LINK PRIMARY KEY CLUSTERED (id_link),
     CONSTRAINT FK_TB_SY_LINK_PESSOA_FISICA FOREIGN KEY (id_pessoa_fisica)
         REFERENCES dbo.TB_SY_PESSOA_FISICA (id_usuario),
-    CONSTRAINT CK_TB_SY_LINK_TP_LINK CHECK (tp_link IN ('C','R','O')),
-    CONSTRAINT CK_TB_SY_LINK_URL CHECK (url_completa LIKE 'http%://%')
+    CONSTRAINT CK_TB_SY_LINK_TP_LINK CHECK (tp_link IN ('C','R','O')), --Contato, Rede social e Outros
+    CONSTRAINT CK_TB_SY_LINK_URL CHECK (url_completa LIKE 'http%://%') 
 );
 GO
 
