@@ -1,138 +1,141 @@
-# ISEEYOU — Scripts do banco de dados
+# I SEE YOU — Banco de dados
 
-Scripts em **SQL Server** para criação, popularização, validação e análise do banco de dados do projeto **ISEEYOU**.
+Scripts T-SQL do banco **`DB_I_SEE_YOU`**, a camada de dados do I SEE YOU (TCC do Técnico em Ciência de Dados 2026 — CEDUP Timbó).
 
-Este repositório foi organizado separando os arquivos por responsabilidade: estrutura do banco, registros iniciais, consultas de análise, funções, triggers e views.
+O modelo segue o **DER V14** (disponível em [`docs/diagramas/`](../docs/diagramas/)) e cobre monitoramento emocional, sono, memórias afetivas, eventos, gamificação, comunidade anônima, guardiões, assinaturas e LGPD.
+
+| Item | Valor |
+|---|---|
+| SGBD | Microsoft SQL Server **2019 ou superior** |
+| Banco | `DB_I_SEE_YOU` (collation `Latin1_General_100_CI_AS_SC_UTF8`) |
+| Schema | `dbo` |
+| Tabelas | 47 (prefixo `TB_SY_`) |
+| Carga de teste | ~777 mil linhas fictícias (1.008 usuários) |
+
+> O SQL Server 2019+ é obrigatório por causa da collation UTF-8. O DDL verifica a versão e aborta se ela for menor.
 
 ---
 
-## Estrutura do projeto
+## Estrutura
 
 ```text
 database/
-├── ddl/
-│   ├── index/
-│   │   └── indexs.sql
-│   ├── reset_tables/
-│   │   └── reset_tables.sql
-│   └── schema/
-│       └── schema.sql
-├── dml/
-│   ├── registers_dados_base_1.sql
-│   ├── registers_dados_base_2.sql
-│   └── registers_dados_base_3.sql
-├── dql/
-│   ├── analise_geral.sql
-│   └── validacao_estrutura.sql
-├── functions/
-│   └── qnt_sono.sql
-├── procedures/
-├── triggers/
-│   └── tg_validacao.sql
-└── views/
-    └── views_analise.sql
+├── ddl/          criação do banco, tabelas, constraints e índices
+├── dml/          carga de dados fictícios (4 partes)
+├── dql/          script consolidado de views de consulta
+├── functions/    funções escalares (FN_SY_*)
+├── views/        views de análise (vw_*)
+├── procedures/   stored procedures (SP_SY_*)
+└── triggers/     triggers de regra de negócio (TR_SY_*)
 ```
 
----
-
-## Descrição das pastas
-
 ### `ddl/`
-Arquivos responsáveis pela estrutura do banco de dados.
-
-- `ddl/schema/schema.sql`: cria as tabelas, chaves primárias, chaves estrangeiras e restrições principais.
-- `ddl/index/indexs.sql`: cria índices auxiliares para melhorar consultas e relacionamentos.
-- `ddl/reset_tables/reset_tables.sql`: remove ou reinicia objetos/tabelas do banco. Use apenas quando quiser recriar o banco do zero.
+- **`script_DDL-iseeyou.sql`** — cria o banco `DB_I_SEE_YOU`, as 47 tabelas, PKs, FKs, UNIQUEs, CHECKs, DEFAULTs e índices em uma única transação. Colunas sensíveis (nome, e-mail, senha, data de nascimento, dados do responsável) usam **Dynamic Data Masking**.
 
 ### `dml/`
-Arquivos responsáveis pela inserção de dados.
+Carga gerada por `gerador/gerar.py` (seed `20261118`). Cada bloco de tabela é atômico: se falhar, nada dele é gravado e dá para rodar só aquele bloco de novo.
 
-- `dml/registers_dados_base_1.sql`: registros base do sistema, como planos, tipos, classificações e dados essenciais.
-- `dml/registers_dados_base_2.sql`: registros fictícios para teste, como usuários, registros de sono, humor, estresse e feedback.
-- `dml/registers_dados_base_3.sql`: registros complementares para aumentar o volume de dados e permitir mais testes de consulta/análise.
+| Arquivo | Cargas | Conteúdo principal |
+|---|---|---|
+| `script_DML-popula_iseeyou_parte1de4.sql` | 01–23 | Catálogos (planos, humores, gatilhos, missões, mundos, prêmios, áudios), usuários, responsáveis, termos LGPD, dispositivos, log de acesso |
+| `script_DML-popula_iseeyou_parte2de4.sql` | 24–26 | Registros de sono e de humor |
+| `script_DML-popula_iseeyou_parte3de4.sql` | 27–38 | Estresse e gatilhos, eventos, pontos, missões, conquistas, mundos, memórias, resgates, log de sequência (parte 1) |
+| `script_DML-popula_iseeyou_parte4de4.sql` | 39–50 | Log de sequência (parte 2), comunidade (publicações, reações, denúncias, bloqueios), guardiões, assinaturas |
 
-### `dql/`
-Arquivos responsáveis por consultas.
-
-- `dql/validacao_estrutura.sql`: consultas para validar se tabelas, constraints, relacionamentos e registros foram criados corretamente.
-- `dql/analise_geral.sql`: consultas analíticas para explorar dados do aplicativo, como sono, humor, estresse, feedback e testes.
+Os arquivos são grandes (5 a 21 MB). Prefira rodar pelo `sqlcmd` em vez de abrir no SSMS.
 
 ### `functions/`
-Funções reutilizáveis do banco.
-
-- `functions/qnt_sono.sql`: calcula a quantidade de horas dormidas a partir do horário de início e término do sono.
-
-### `procedures/`
-Pasta reservada para procedures. No momento, não há procedures definidas.
-
-### `triggers/`
-Gatilhos de validação e regras de negócio.
-
-- `triggers/tg_validacao.sql`: contém triggers usadas para validar regras que não podem ser garantidas apenas com `CHECK`, como regras dependentes de outra tabela.
+| Função | Retorno | O que faz |
+|---|---|---|
+| `FN_SY_IDADE(@dt_nascimento)` | `INT` | Idade em anos completos |
+| `FN_SY_EH_MENOR(@id_usuario)` | `BIT` | 1 = menor de idade, 0 = maior, `NULL` = usuário não existe. Depende de `FN_SY_IDADE` |
+| `FN_SY_CAL_PERIODO(@dt_inicio, @dt_fim)` | `DECIMAL(10,2)` | Horas entre duas datas (usada para a duração do sono) |
+| `FN_SY_SALDO_PONTOS(@usuario)` | `INT` | Saldo de pontos: créditos (`C`) menos débitos (`D`) |
 
 ### `views/`
-Views para facilitar consultas e análises.
+| View | O que entrega | Depende de |
+|---|---|---|
+| `vw_info_usuario` | Usuário e o mundo mais avançado que ele desbloqueou | — |
+| `vw_mundo_usuario` | Mundo atual, pontos acumulados e pontos para o próximo nível | `vw_info_usuario` |
+| `vw_missoes_usuario` | Todas as missões por usuário ativo, com status e saldo de pontos | `FN_SY_SALDO_PONTOS` |
+| `vw_eventos_usuario` | Agenda de eventos com data, hora e dia da semana | — |
+| `vw_estresse_semanal` | Pico diário de estresse, agrupado por semana | — |
+| `vw_sono_semanal` | Horas dormidas, despertares e qualidade média por dia | `FN_SY_CAL_PERIODO` |
 
-- `views/views_analise.sql`: cria views voltadas para análise dos dados do aplicativo.
+As views convertem datas de UTC para o horário de Brasília (`DATEADD(HOUR, -3, ...)`).
+
+### `dql/`
+- **`script_DQL-consulta_iseeyou.sql`** — reúne todas as views acima em um único script e acrescenta a **`vw_correlacao_sono_estresse`** (pico de estresse × horas dormidas no mesmo dia), que só existe aqui.
+
+### `procedures/`
+| Procedure | O que faz |
+|---|---|
+| `SP_SY_CONVITE_CRIAR` | Cria um convite de guardião pendente para um usuário ativo |
+| `SP_SY_INICIAR_MISSAO` | Inicia uma missão para o usuário, se ainda não foi iniciada |
+| `SP_SY_DESBLOQUEAR_USUARIO` | Encerra um bloqueio preenchendo `dt_fim`, sem apagar o histórico |
+
+### `triggers/`
+| Trigger | Tabela | O que faz |
+|---|---|---|
+| `TR_SY_USUARIO_INICIALIZA` | `TB_SY_USUARIO` | Cria a sequência zerada do novo usuário |
+| `TR_SY_USUARIO_SOFT_DELETE` | `TB_SY_USUARIO` | Troca o `DELETE` por exclusão lógica (`dt_exclusao`) |
+| `TR_SY_SEQUENCIA_LOG_STATUS` | `TB_SY_SEQUENCIA` | Grava o valor anterior e o novo da sequência no log |
+| `tg_validacao.sql` | — | **Legado**: ver pontos de atenção |
 
 ---
 
-## Ordem recomendada de execução
+## Ordem de execução
 
-Execute os scripts nesta ordem:
+1. `ddl/script_DDL-iseeyou.sql`
+2. `dml/` partes **1 → 2 → 3 → 4**, nessa ordem
+3. `functions/`: `FN_SY_IDADE` → `FN_SY_EH_MENOR` → `FN_SY_CAL_PERIODO` → `FN_SY_SALDO_PONTOS`
+4. `views/`: `vw_info_usuario` antes de `vw_mundo_usuario`; as demais em qualquer ordem
+5. `procedures/`
+6. `triggers/` (**sempre depois da carga**)
 
-1. `ddl/reset_tables/reset_tables.sql`  
-   Opcional. Use somente se quiser apagar/recriar a estrutura atual.
+Exemplo com `sqlcmd`:
 
-2. `ddl/schema/schema.sql`  
-   Cria as tabelas, constraints, chaves primárias e chaves estrangeiras.
+```bash
+sqlcmd -S localhost -E -i ddl/script_DDL-iseeyou.sql
+sqlcmd -S localhost -E -i dml/script_DML-popula_iseeyou_parte1de4.sql
+# ... partes 2, 3 e 4
+```
 
-3. `ddl/index/indexs.sql`  
-   Cria os índices auxiliares.
+> **Por que os triggers ficam por último:** a carga já insere as sequências dos usuários. Com `TR_SY_USUARIO_INICIALIZA` ativo, cada usuário ganharia uma segunda sequência e a carga quebraria na constraint UNIQUE.
 
-4. `functions/qnt_sono.sql`  
-   Cria a função de cálculo da quantidade de horas de sono.
+---
 
-5. `triggers/tg_validacao.sql`  
-   Cria triggers de validação e regras de negócio.
+## Convenção de nomes
 
-6. `views/views_analise.sql`  
-   Cria views para análise e consultas recorrentes.
+| Objeto | Padrão |
+|---|---|
+| Tabela | `TB_SY_NOME` (associativas: `TB_SY_A_...`) |
+| Primary key | `PK_NOME_TABELA` |
+| Foreign key | `FK_TABELA_ORIGEM_TABELA_DESTINO` (associativas: `PF_...`) |
+| Unique / Check / Default | `UN_...` / `CK_...` / `DF_...` |
+| Índice não único | `IX_TABELA_COLUNA(S)` |
+| Função / Procedure / Trigger / View | `FN_SY_` / `SP_SY_` / `TR_SY_` / `vw_` |
 
-7. `dml/registers_dados_base_1.sql`  
-   Insere os dados base do sistema.
-
-8. `dml/registers_dados_base_2.sql`  
-   Insere registros fictícios para teste.
-
-9. `dml/registers_dados_base_3.sql`  
-   Insere registros complementares para ampliar o volume de dados.
-
-10. `dql/validacao_estrutura.sql`  
-    Valida a estrutura criada e os principais objetos do banco.
-
-11. `dql/analise_geral.sql`  
-    Executa consultas analíticas gerais sobre os dados.
+Todas as FKs usam `NO ACTION`.
 
 ---
 
 ## Pontos de atenção
 
-- O banco foi estruturado para **SQL Server**.
-- O schema padrão utilizado é `dbo`.
-- Os arquivos de `DML` usam dados fictícios e não devem conter informações reais de usuários.
-- A função `qnt_sono.sql` deve retornar `NULL` quando os horários forem inválidos ou não informados.
-- O arquivo `reset_tables.sql` deve ser usado com cuidado, pois pode apagar estruturas e dados existentes.
-- Algumas validações foram feitas por trigger porque o SQL Server não permite que `CHECK` consulte valores em outra tabela.
+Problemas conhecidos nos scripts atuais. Corrija antes de rodar a pasta inteira:
+
+- **`views/vw_sono_semanal.sql`** usa `USE BD_I_SEE_YOU`, mas o banco se chama `DB_I_SEE_YOU`. Do jeito que está, o script falha.
+- **`functions/FN_SY_SALDO_PONTOS.sql`** cria um índice antes da função sem `GO` entre os dois. No SQL Server, `CREATE FUNCTION` precisa ser o primeiro comando do lote, então o script dá erro. Esse índice também duplica parte do `IX_MOVIMENTACAO_PONTOS_ID_USUARIO_DT_REGISTRO`, que já existe no DDL.
+- **`FN_SY_CAL_PERIODO.sql`** e **`FN_SY_SALDO_PONTOS.sql`** não têm `USE DB_I_SEE_YOU`, então criam a função no banco que estiver selecionado na sessão.
+- **`triggers/tg_validacao.sql`** é de uma versão antiga do modelo: referencia tabelas que não existem no DDL V14 (`TB_SY_CLASSIFICACAO`, `TB_SY_TP_CLASSIFICACAO`, `TB_SY_APLICACAO_TESTE`, `TB_SY_RESPOSTA_TESTE_USUARIO`). **Não execute.**
+- **`vw_eventos_usuario`** converte `dt_inicio` para o horário de Brasília, mas não converte `dt_fim`.
+- As funções e procedures usam `CREATE`, não `CREATE OR ALTER`. Rodar de novo gera erro de objeto já existente.
+- `procedures/deleteme` é só um arquivo para manter a pasta no Git e pode ser apagado.
 
 ---
 
-## Objetivo dos scripts
+## Dados e LGPD
 
-A estrutura foi pensada para apoiar:
-
-- criação do banco do projeto ISEEYOU;
-- testes com dados fictícios;
-- validação de integridade dos relacionamentos;
-- análise de registros de sono, humor e estresse;
-- organização do projeto para apresentação no TCC/TCS e versionamento no GitHub.
+- Toda a carga é **fictícia**, gerada por script. Não suba dados reais de usuários para este repositório.
+- O DDL aplica máscara dinâmica nas colunas sensíveis. Um usuário sem permissão `UNMASK` vê os dados mascarados.
+- As análises das views mostram associações (por exemplo, sono × estresse), não relações de causa e efeito, e **não são diagnóstico**.
