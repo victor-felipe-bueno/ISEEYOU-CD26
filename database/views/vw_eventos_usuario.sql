@@ -11,8 +11,8 @@ SELECT
 	FORMAT(DATEADD(HOUR, -3, e.dt_inicio), 'HH:mm') AS dt_hora_minuto_inicio,
 	FORMAT(DATEADD(HOUR, -3, e.dt_inicio), 'dddd', 'pt-BR') AS dt_dia_semana,
 	CAST(e.dt_fim AS DATE) AS dt_fim,
-	FORMAT(e.dt_fim, 'HH:mm') AS dt_hora_minuto_fim,
-	e.fl_concluido
+	FORMAT(DATEADD(HOUR, -3,e.dt_fim), 'HH:mm') AS dt_hora_minuto_fim, e.fl_concluido
+
 
 FROM TB_SY_EVENTO e
 LEFT JOIN TB_SY_USUARIO u
