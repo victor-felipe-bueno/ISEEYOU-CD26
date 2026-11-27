@@ -14,7 +14,6 @@ SELECT
 	FORMAT(DATEADD(HOUR, -3,e.dt_fim), 'HH:mm') AS dt_hora_minuto_fim,
 	e.fl_concluido
 
-
 FROM TB_SY_EVENTO e
 LEFT JOIN TB_SY_USUARIO u
 ON e.id_usuario = u.id_usuario
